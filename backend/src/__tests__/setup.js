@@ -2,6 +2,7 @@ process.env.NODE_ENV = 'test';
 process.env.JWT_SECRET = 'test-secret';
 process.env.ANTHROPIC_API_KEY = 'test-key';
 process.env.RESEND_API_KEY = 're_test_placeholder';
+process.env.ADMIN_API_KEY = 'test-admin-key';
 process.env.DATABASE_URL = 'postgresql://test:test@localhost:5432/test';
 
 jest.mock('resend', () => ({

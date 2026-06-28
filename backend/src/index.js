@@ -3,6 +3,7 @@ const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
 const { setupCronJobs } = require('./jobs');
+const { requireAdmin, requireClinicAccess } = require('./middleware/auth');
 
 const app = express();
 
@@ -10,12 +11,21 @@ app.use(helmet());
 app.use(cors({ origin: process.env.FRONTEND_URL || 'http://localhost:3000' }));
 app.use(express.json());
 
+// Public routes
 app.use('/api/intake', require('./routes/intake'));
 app.use('/api/search', require('./routes/search'));
 app.use('/api/freshness', require('./routes/freshness'));
-app.use('/api/clinic', require('./routes/clinic'));
-app.use('/api/admin', require('./routes/admin'));
 app.use('/api/waitlist', require('./routes/waitlist'));
+
+// Clinic auth (public — issues tokens)
+app.use('/api/clinic/auth', require('./routes/clinicAuth'));
+
+// Clinic dashboard (protected — requires clinic session JWT)
+const clinicRouter = require('./routes/clinic');
+app.use('/api/clinic/:clinic_id', requireClinicAccess, clinicRouter);
+
+// Admin (protected — requires ADMIN_API_KEY)
+app.use('/api/admin', requireAdmin, require('./routes/admin'));
 
 app.get('/health', (req, res) => res.json({ status: 'ok' }));
 
