@@ -1,0 +1,185 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Discipline {
+  OT
+  SPEECH
+  PSYCHOLOGY
+}
+
+enum IntakeStatus {
+  OPEN
+  LIMITED
+  CLOSED
+}
+
+enum WaitTimeBand {
+  UNDER_1_WEEK
+  ONE_TWO_WEEKS
+  TWO_FOUR_WEEKS
+  FOUR_EIGHT_WEEKS
+  EIGHT_PLUS_WEEKS
+}
+
+enum CapacityLevel {
+  HIGH
+  MEDIUM
+  LOW
+}
+
+enum UpdatedBy {
+  CLINIC
+  ADMIN
+  SYSTEM
+}
+
+enum ReferrerType {
+  GP
+  SCHOOL
+  SUPPORT_COORDINATOR
+  PAEDIATRICIAN
+  FAMILY
+}
+
+enum ReferralStatus {
+  PENDING
+  MATCHED
+  WAITLISTED
+  CANCELLED
+}
+
+enum ResponseType {
+  CONFIRMED
+  UPDATED
+  NO_RESPONSE
+}
+
+model Clinic {
+  id              String   @id @default(uuid())
+  name            String
+  address         String
+  suburb          String
+  lat             Decimal
+  lng             Decimal
+  phone           String
+  website         String?
+  ndis_registered Boolean  @default(false)
+  bulk_billing    Boolean  @default(false)
+  private_health  Boolean  @default(false)
+  created_at      DateTime @default(now())
+  updated_at      DateTime @updatedAt
+
+  availability AvailabilityObject[]
+  admins       ClinicAdmin[]
+
+  @@index([suburb])
+}
+
+model AvailabilityObject {
+  id                   String       @id @default(uuid())
+  clinic_id            String
+  discipline           Discipline
+  intake_status        IntakeStatus
+  age_bands_served     String[]
+  wait_time_band       WaitTimeBand
+  capacity_level       CapacityLevel
+  monthly_referral_cap Int?
+  last_updated         DateTime      @default(now())
+  confidence_score     Float         @default(1.0)
+  updated_by           UpdatedBy     @default(CLINIC)
+  created_at           DateTime      @default(now())
+  updated_at           DateTime      @updatedAt
+
+  clinic            Clinic            @relation(fields: [clinic_id], references: [id], onDelete: Cascade)
+  waitlist_entries  WaitlistEntry[]
+  freshness_prompts FreshnessPrompt[]
+
+  @@index([clinic_id])
+  @@index([discipline])
+  @@index([intake_status])
+  @@index([confidence_score])
+  @@index([discipline, intake_status, confidence_score])
+}
+
+model Referrer {
+  id                String       @id @default(uuid())
+  type              ReferrerType
+  organisation_name String?
+  contact_name      String
+  email             String
+  phone             String?
+  suburb            String
+  created_at        DateTime     @default(now())
+  updated_at        DateTime     @updatedAt
+
+  referral_requests ReferralRequest[]
+}
+
+model ReferralRequest {
+  id                    String         @id @default(uuid())
+  referrer_id           String
+  child_age             Int
+  disciplines_requested String[]
+  urgency_score         Int
+  ai_interpretation     Json?
+  notes                 String?
+  status                ReferralStatus @default(PENDING)
+  created_at            DateTime       @default(now())
+  updated_at            DateTime       @updatedAt
+
+  referrer         Referrer        @relation(fields: [referrer_id], references: [id])
+  waitlist_entries WaitlistEntry[]
+}
+
+model WaitlistEntry {
+  id                     String    @id @default(uuid())
+  referral_request_id    String
+  availability_object_id String
+  notified_at            DateTime?
+  created_at             DateTime  @default(now())
+
+  referral_request    ReferralRequest    @relation(fields: [referral_request_id], references: [id])
+  availability_object AvailabilityObject @relation(fields: [availability_object_id], references: [id])
+}
+
+model ClinicAdmin {
+  id                 String   @id @default(uuid())
+  clinic_id          String
+  name               String
+  email              String
+  phone              String
+  is_primary_contact Boolean  @default(false)
+  created_at         DateTime @default(now())
+  updated_at         DateTime @updatedAt
+
+  clinic Clinic @relation(fields: [clinic_id], references: [id], onDelete: Cascade)
+}
+
+model FreshnessPrompt {
+  id                     String        @id @default(uuid())
+  availability_object_id String
+  sent_at                DateTime      @default(now())
+  responded_at           DateTime?
+  response_type          ResponseType?
+
+  availability_object AvailabilityObject @relation(fields: [availability_object_id], references: [id])
+}
+
+model SearchLog {
+  id                 String    @id @default(uuid())
+  search_id          String    @unique
+  disciplines        String[]
+  child_age          Int
+  urgency_score      Int?
+  suburb             String
+  radius_km          Float
+  selected_clinic_id String?
+  selected_at        DateTime?
+  created_at         DateTime  @default(now())
+}
