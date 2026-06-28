@@ -38,8 +38,10 @@ describe('computeCompositeScore', () => {
   });
 
   it('applies urgency bonus when urgency >= 7 and short wait', () => {
-    const withBonus = computeCompositeScore({ ...base, wait_time_band: 'UNDER_1_WEEK', capacity_level: 'HIGH' }, 7);
-    const withoutBonus = computeCompositeScore({ ...base, wait_time_band: 'UNDER_1_WEEK', capacity_level: 'HIGH' }, 6);
+    // Use confidence_score=0.5 so base score < 0.8, giving room for the +0.2 bonus
+    const ao = { ...base, wait_time_band: 'UNDER_1_WEEK', capacity_level: 'HIGH', confidence_score: 0.5 };
+    const withBonus = computeCompositeScore(ao, 7);
+    const withoutBonus = computeCompositeScore(ao, 6);
     expect(withBonus).toBeGreaterThan(withoutBonus);
   });
 

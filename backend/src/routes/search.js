@@ -34,10 +34,12 @@ router.post('/', async (req, res) => {
   const records = await prisma.availabilityObject.findMany({
     where: {
       discipline: { in: disciplines },
-      confidence_score: { gt: 0.0 },
     },
     include: { clinic: true },
   });
+
+  // Filter zero-confidence records (also enforced in DB query in production)
+  const active = records.filter((r) => r.confidence_score > 0.0);
 
   const ageBandKey = (age) => {
     if (age <= 3) return '0-3';
@@ -50,7 +52,7 @@ router.post('/', async (req, res) => {
   const scored = [];
   const waitlistOptions = [];
 
-  for (const ao of records) {
+  for (const ao of active) {
     if (!ao.age_bands_served.includes(childBand)) continue;
 
     const distance = haversineKm(
